@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="./">
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="description" content="Snake Battle - classic snake survival game.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Snake Battle">
+  <link rel="apple-touch-icon" href="./icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <link rel="manifest" href="./manifest.json">
+  <title>Snake Battle</title>
+
+  <!-- Google AdSense Auto Ads: keep this loader once in the document head. -->
+  <script async
+    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1727125738804934"
+    crossorigin="anonymous"></script>
+
+  <!-- Yandex AdFox loader: keep this loader once in the document head. -->
+  <script>
+    window.yaContextCb = window.yaContextCb || [];
+  </script>
+  <script async src="https://yandex.ru/ads/system/context.js"></script>
+
+  <style>
+    html, body {
+      width: 100%; height: 100%; margin: 0; padding: 0;
+      overflow: hidden; overscroll-behavior: none; touch-action: none;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; background: #000;
+    }
+    flutter-view, flt-glass-pane, canvas { touch-action: none !important; }
+
+    /* AdFox banner is shown only while the game is in menu/pause/result state. */
+    #snake-adfox-slot {
+      position: fixed;
+      z-index: 99999;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      min-height: 0;
+      max-height: 110px;
+      overflow: hidden;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.88);
+      pointer-events: auto;
+    }
+    #snake-adfox-slot.is-visible { display: flex; }
+    #adfox_179521029772845339 {
+      width: 100%;
+      max-width: 970px;
+      min-height: 0;
+      max-height: 110px;
+      overflow: hidden;
+    }
+  </style>
+
+  <script>
+  (function () {
+    "use strict";
+
+    var adFoxRequested = false;
+    var adFoxVisible = false;
+
+    function showAdFoxBanner() {
+      var slot = document.getElementById("snake-adfox-slot");
+      if (!slot) return;
+      slot.classList.add("is-visible");
+      adFoxVisible = true;
+
+      if (!adFoxRequested) {
+        adFoxRequested = true;
+        window.yaContextCb = window.yaContextCb || [];
+        window.yaContextCb.push(function () {
+          if (window.Ya && window.Ya.adfoxCode) {
+            window.Ya.adfoxCode.create({
+              ownerId: 14743511,
+              containerId: "adfox_179521029772845339",
+              params: { p1: "dtoil", p2: "hukd" }
+            });
+          }
+        });
+      }
+    }
+
+    function hideAdFoxBanner() {
+      var slot = document.getElementById("snake-adfox-slot");
+      if (slot) slot.classList.remove("is-visible");
+      adFoxVisible = false;
+    }
+
+    // Public helpers for the Flutter web game.
+    window.showSnakeAdFoxBanner = showAdFoxBanner;
+    window.hideSnakeAdFoxBanner = hideAdFoxBanner;
+
+    /*
+     * Compatibility-only shims:
+     * The compiled game still calls these legacy bridge names.
+     * They no longer load or communicate with CrazyGames, Poki, or GameDistribution.
+     * Menu/pause/result states show the AdFox banner; active gameplay hides it.
+     */
+    window.PokiSDK = {
+      init: function () { return Promise.resolve(true); },
+      gameLoadingFinished: function () { showAdFoxBanner(); },
+      gameplayStart: function () { hideAdFoxBanner(); },
+      gameplayStop: function () { showAdFoxBanner(); },
+      commercialBreak: function () { return Promise.resolve(false); }
+    };
+
+    window.initializeGameDistribution = function () {
+      return Promise.resolve(true);
+    };
+
+    window.showGameDistributionAd = function () {
+      return Promise.resolve(false);
+    };
+
+    document.addEventListener("contextmenu", function (event) {
+      event.preventDefault();
+    });
+    window.addEventListener("wheel", function (event) {
+      event.preventDefault();
+    }, { passive: false });
+    window.addEventListener("keydown", function (event) {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].indexOf(event.key) !== -1) {
+        event.preventDefault();
+      }
+    }, { passive: false });
+  })();
+  </script>
+</head>
+<body>
+  <!-- Yandex AdFox placement: menu, pause and results only; hidden during active gameplay. -->
+  <div id="snake-adfox-slot" aria-label="Advertisement">
+    <div id="adfox_179521029772845339"></div>
+  </div>
+
+  <script src="./flutter_bootstrap.js" async></script>
+</body>
+</html>
