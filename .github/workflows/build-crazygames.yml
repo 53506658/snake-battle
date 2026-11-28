@@ -1,0 +1,70 @@
+name: Build CrazyGames package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Snake_Battle_CrazyGames_Repaired.zip"
+      - ".github/workflows/build-crazygames.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ZIP tools
+        run: sudo apt-get update && sudo apt-get install -y unzip zip
+
+      - name: Extract and validate CrazyGames package
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE="Snake_Battle_CrazyGames_Repaired.zip"
+          test -s "$SOURCE"
+          unzip -t "$SOURCE"
+          mkdir -p work dist
+          unzip -q "$SOURCE" -d work
+
+          test -s work/index.html
+          test -s work/main.dart.js
+          test -s work/flutter_bootstrap.js
+          test -d work/canvaskit
+
+          grep -Fq 'https://sdk.crazygames.com/crazygames-sdk-v3.js' work/index.html
+          grep -Fq 'await current.init()' work/index.html
+          grep -Fq 'game.loadingStart()' work/index.html
+          grep -Fq 'game.gameplayStart()' work/index.html
+          grep -Fq 'current.ad.requestAd("midgame"' work/index.html
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("work/index.html").read_text()
+          scripts = re.findall(r"<script(?:\\s[^>]*)?>(.*?)</script>", html, re.S | re.I)
+          inline = [s for s in scripts if s.strip()]
+          if not inline:
+              raise SystemExit("No inline CrazyGames integration script found")
+          Path("/tmp/crazygames-inline.js").write_text("\\n".join(inline))
+          PY
+          node --check /tmp/crazygames-inline.js
+
+          # Repackage the supplied CrazyGames build without changing game code/assets.
+          (cd work && zip -qr -9 ../dist/Snake_Battle_CrazyGames.zip .)
+          unzip -t dist/Snake_Battle_CrazyGames.zip
+          sha256sum "$SOURCE" dist/Snake_Battle_CrazyGames.zip | tee dist/SHA256SUMS.txt
+
+      - name: Upload final CrazyGames ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Snake-Battle-CrazyGames
+          path: |
+            dist/Snake_Battle_CrazyGames.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
