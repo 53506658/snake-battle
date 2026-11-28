@@ -34,18 +34,15 @@ jobs:
           unzip -t "$SOURCE"
           mkdir -p work dist
           unzip -q "$SOURCE" -d work
-
           test -s work/index.html
           test -s work/main.dart.js
           test -s work/flutter_bootstrap.js
           test -d work/canvaskit
-
           grep -Fq 'https://sdk.crazygames.com/crazygames-sdk-v3.js' work/index.html
           grep -Fq 'await current.init()' work/index.html
           grep -Fq 'game.loadingStart()' work/index.html
           grep -Fq 'game.gameplayStart()' work/index.html
           grep -Fq 'current.ad.requestAd("midgame"' work/index.html
-
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -55,6 +52,7 @@ jobs:
           if not inline:
               raise SystemExit("No inline CrazyGames integration script found")
           Path("/tmp/crazygames-inline.js").write_text("\n".join(inline))
+          Path("dist/FLUTTER_BOOTSTRAP_HEAD.txt").write_text(Path("work/flutter_bootstrap.js").read_text()[:12000])
           PY
           node --check /tmp/crazygames-inline.js
 
@@ -88,8 +86,8 @@ jobs:
               const page = await context.newPage();
               const errors = [];
               const failed = [];
-              page.on('pageerror', e => errors.push(String(e)));
-              page.on('console', m => { if (m.type()==='error') errors.push(m.text()); });
+              page.on('pageerror', e => errors.push({message:String(e),stack:e.stack||null}));
+              page.on('console', m => { if (m.type()==='error') errors.push({message:m.text(),stack:null}); });
               page.on('requestfailed', r => failed.push({url:r.url(), error:r.failure()?.errorText}));
               await page.goto('http://127.0.0.1:8765/index.html', {waitUntil:'domcontentloaded', timeout:30000});
               await page.waitForTimeout(20000);
@@ -104,6 +102,7 @@ jobs:
                   title:document.title,
                   bodySize:{width:document.body.scrollWidth,height:document.body.scrollHeight},
                   readyState:document.readyState,
+                  bodyExists:!!document.body,
                   flutterView:!!fv,
                   flutterRect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,
                   canvases,
@@ -119,11 +118,11 @@ jobs:
             fs.writeFileSync('dist/QA_REPORT.json', JSON.stringify(report,null,2));
             const lines=['# CrazyGames browser QA',''];
             for (const x of report) {
-              lines.push('## '+x.profile, '', '```json', JSON.stringify(x.state,null,2), '```',
-                '', '### JavaScript/console errors', ...((x.errors.length?x.errors:['None observed']).map(e=>'- '+e)),
+              lines.push('## '+x.profile, '', 'STATE JSON:', JSON.stringify(x.state,null,2),
+                '', '### JavaScript/console errors', ...((x.errors.length?x.errors.map(e=>e.message+'\\n'+(e.stack||'')):['None observed']).map(e=>'- '+e)),
                 '', '### Failed requests', ...((x.failedRequests.length?x.failedRequests.map(e=>'- '+e.url+' — '+e.error):['None observed'])), '');
             }
-            fs.writeFileSync('dist/QA_REPORT.md', lines.join('\n'));
+            fs.writeFileSync('dist/QA_REPORT.md', lines.join('\\n'));
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
 
@@ -155,11 +154,12 @@ jobs:
           mkdir -p .github/qa
           cp dist/QA_REPORT.md .github/qa/crazygames-browser-qa.md
           cp dist/REWARD_INSPECTION.md .github/qa/crazygames-reward-inspection.md
+          cp dist/FLUTTER_BOOTSTRAP_HEAD.txt .github/qa/flutter-bootstrap-diagnostics.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .github/qa/
           if ! git diff --cached --quiet; then
-            git commit -m "Add CrazyGames browser QA report"
+            git commit -m "Add detailed CrazyGames browser diagnostics"
             git push
           fi
 
@@ -174,5 +174,6 @@ jobs:
             dist/desktop-qa.png
             dist/mobile-qa.png
             dist/REWARD_INSPECTION.md
+            dist/FLUTTER_BOOTSTRAP_HEAD.txt
           if-no-files-found: error
           retention-days: 30
